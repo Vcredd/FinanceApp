@@ -176,4 +176,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         return tong;
     }
+
+    public void deleteGiaoDich(int idGiaoDich) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_GIAO_DICH, "id_giao_dich = ?", new String[]{String.valueOf(idGiaoDich)});
+        db.close();
+    }
 }

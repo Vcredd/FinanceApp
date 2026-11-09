@@ -17,13 +17,15 @@ import java.util.Locale;
 public class GiaoDichAdapter extends RecyclerView.Adapter<GiaoDichAdapter.ViewHolder> {
 
     public static class GiaoDichItem {
+        public int idGiaoDich;
         public String tenDanhMuc;
         public String ghiChu;
         public String ngay;
         public int soTien;
         public String loai;
 
-        public GiaoDichItem(String tenDanhMuc, String ghiChu, String ngay, int soTien, String loai) {
+        public GiaoDichItem(int idGiaoDich, String tenDanhMuc, String ghiChu, String ngay, int soTien, String loai) {
+            this.idGiaoDich = idGiaoDich;
             this.tenDanhMuc = tenDanhMuc;
             this.ghiChu = ghiChu;
             this.ngay = ngay;
@@ -64,6 +66,14 @@ public class GiaoDichAdapter extends RecyclerView.Adapter<GiaoDichAdapter.ViewHo
             holder.tvSoTien.setText("+ " + currencyVN.format(item.soTien));
             holder.tvSoTien.setTextColor(Color.parseColor("#4CAF50"));
         }
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onItemLongClick(item);
+                return true; // Trả về true để báo hiệu đã xử lý xong sự kiện LongClick
+            }
+            return false;
+        });
     }
 
     private void setCategoryIconAndBackground(ViewHolder holder, String tenDanhMuc) {
@@ -132,5 +142,15 @@ public class GiaoDichAdapter extends RecyclerView.Adapter<GiaoDichAdapter.ViewHo
             tvNgay = itemView.findViewById(R.id.tvNgay);
             tvSoTien = itemView.findViewById(R.id.tvSoTien);
         }
+    }
+
+    public interface OnItemLongClickListener {
+        void onItemLongClick(GiaoDichItem item);
+    }
+
+    private OnItemLongClickListener longClickListener;
+
+    public void setOnItemLongClickListener(OnItemLongClickListener listener) {
+        this.longClickListener = listener;
     }
 }

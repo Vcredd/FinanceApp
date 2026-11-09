@@ -87,6 +87,18 @@ public class AddTransactionActivity extends AppCompatActivity {
 
         // Xử lý nút Lưu Giao Dịch
         btnLuuGiaoDich.setOnClickListener(v -> luuGiaoDich());
+
+        int editId = getIntent().getIntExtra("EDIT_ID", -1);
+
+        if (editId != -1) {
+            // Đang ở chế độ SỬA
+            btnLuuGiaoDich.setText("CẬP NHẬT GIAO DỊCH");
+
+            // Gọi hàm truy vấn SQLite dựa trên editId để lấy dữ liệu cũ và điền vào các ô EditText
+            // loadOldTransactionData(editId);
+        } else {
+            // Đang ở chế độ THÊM MỚI (Mặc định)
+        }
     }
 
     private void updateDateField() {

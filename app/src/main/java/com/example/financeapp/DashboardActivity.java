@@ -1,7 +1,10 @@
 package com.example.financeapp;
 
+import static com.example.financeapp.DatabaseHelper.TABLE_GIAO_DICH;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -108,18 +111,56 @@ public class DashboardActivity extends AppCompatActivity {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
+                // Lấy thêm ID giao dịch từ SQLite
+                int idGiaoDich = cursor.getInt(cursor.getColumnIndexOrThrow("id_giao_dich"));
                 int soTien = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_GD_SOTIEN));
                 String loai = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_GD_LOAI));
                 String ngay = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_GD_NGAY));
                 String ghiChu = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_GD_GHICHU));
                 String tenDanhMuc = cursor.getString(cursor.getColumnIndexOrThrow("ten_danh_muc"));
 
-                giaoDichList.add(new GiaoDichAdapter.GiaoDichItem(tenDanhMuc, ghiChu, ngay, soTien, loai));
+                // Truyền ID vào Constructor mới
+                giaoDichList.add(new GiaoDichAdapter.GiaoDichItem(idGiaoDich, tenDanhMuc, ghiChu, ngay, soTien, loai));
             } while (cursor.moveToNext());
             cursor.close();
         }
 
         adapter = new GiaoDichAdapter(giaoDichList);
+
+        // Xử lý sự kiện nhấn giữ
+        adapter.setOnItemLongClickListener(item -> showOptionsDialog(item));
+
         recyclerView.setAdapter(adapter);
+    }
+    private void showOptionsDialog(GiaoDichAdapter.GiaoDichItem item) {
+        String[] options = {"Chỉnh sửa", "Xóa giao dịch"};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Tùy chọn")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        // Xử lý Chỉnh sửa: Mở AddTransactionActivity và truyền ID sang
+                        Intent intent = new Intent(DashboardActivity.this, AddTransactionActivity.class);
+                        intent.putExtra("EDIT_ID", item.idGiaoDich);
+                        startActivity(intent);
+                    } else if (which == 1) {
+                        // Xử lý Xóa: Hiển thị thêm 1 dialog xác nhận cho an toàn
+                        confirmDelete(item.idGiaoDich);
+                    }
+                })
+                .show();
+    }
+
+    private void confirmDelete(int idGiaoDich) {
+        new AlertDialog.Builder(this)
+                .setTitle("Xác nhận xóa")
+                .setMessage("Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.")
+                .setPositiveButton("Xóa", (dialog, which) -> {
+                    dbHelper.deleteGiaoDich(idGiaoDich);
+                    loadFilteredData();      // Tải lại danh sách
+                    updateDashboardHeader(); // Cập nhật lại tổng tiền số dư
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
     }
 }
