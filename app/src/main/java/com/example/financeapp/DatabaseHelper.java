@@ -6,6 +6,12 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
+
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "QuanLyChiTieu.db";
@@ -119,6 +125,44 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "INNER JOIN " + TABLE_DANH_MUC + " d ON g.id_danh_muc = d.id_danh_muc " +
                 "ORDER BY g.ngay_giao_dich DESC";
         return db.rawQuery(query, null);
+    }
+
+    public Cursor getGiaoDichFiltered(String timeFilter, String typeFilter) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        StringBuilder query = new StringBuilder(
+                "SELECT g.*, d.ten_danh_muc, d.bieu_tuong FROM " + TABLE_GIAO_DICH + " g " +
+                        "INNER JOIN " + TABLE_DANH_MUC + " d ON g.id_danh_muc = d.id_danh_muc WHERE 1=1 "
+        );
+
+        List<String> argsList = new ArrayList<>();
+
+        // 1. Lọc theo thời gian
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        Calendar cal = Calendar.getInstance();
+
+        if ("TODAY".equals(timeFilter)) {
+            String todayStr = sdf.format(cal.getTime());
+            query.append("AND g.ngay_giao_dich = ? ");
+            argsList.add(todayStr);
+        } else if ("THIS_MONTH".equals(timeFilter)) {
+            SimpleDateFormat monthYearFormat = new SimpleDateFormat("/MM/yyyy", Locale.getDefault());
+            String currentMonthYear = monthYearFormat.format(cal.getTime());
+            query.append("AND g.ngay_giao_dich LIKE ? ");
+            argsList.add("%" + currentMonthYear);
+        }
+
+        // 2. Lọc theo loại (THU/CHI)
+        if ("THU".equals(typeFilter)) {
+            query.append("AND g.loai = 'THU' ");
+        } else if ("CHI".equals(typeFilter)) {
+            query.append("AND g.loai = 'CHI' ");
+        }
+
+        // Sắp xếp ngày mới nhất lên đầu
+        query.append("ORDER BY g.id_giao_dich DESC");
+
+        String[] args = argsList.toArray(new String[0]);
+        return db.rawQuery(query.toString(), args);
     }
 
     // Tính tổng theo loại

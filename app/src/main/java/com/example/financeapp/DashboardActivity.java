@@ -4,18 +4,18 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.financeapp.DatabaseHelper;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class DashboardActivity extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
     private TextView tvSoDu, tvTongThu, tvTongChi;
@@ -23,10 +23,14 @@ public class MainActivity extends AppCompatActivity {
     private GiaoDichAdapter adapter;
     private List<GiaoDichAdapter.GiaoDichItem> giaoDichList;
 
+    // Lưu trạng thái bộ lọc hiện tại
+    private String selectedTimeFilter = "TODAY"; // TODAY, THIS_MONTH, ALL
+    private String selectedTypeFilter = "ALL";   // ALL, THU, CHI
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_dashboard);
 
         dbHelper = new DatabaseHelper(this);
 
@@ -36,40 +40,55 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerViewGiaoDich);
         FloatingActionButton fab = findViewById(R.id.fabAdd);
 
+        ChipGroup chipGroupTime = findViewById(R.id.chipGroupTime);
+        ChipGroup chipGroupType = findViewById(R.id.chipGroupType);
+
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         giaoDichList = new ArrayList<>();
 
-        // Kiểm tra nếu chưa có dữ liệu thì chèn thử dữ liệu mẫu để kiểm tra kết nối
-        insertSampleDataIfEmpty();
-
-        // Cập nhật số dư và danh sách giao dịch từ CSDL
-        updateDashboard();
-
-        // Xử lý sự kiện bấm nút Thêm (+)
+        // Nút thêm mới (+)
         fab.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, AddTransactionActivity.class);
+            Intent intent = new Intent(DashboardActivity.this, AddTransactionActivity.class);
             startActivity(intent);
         });
+
+        // 1. Sự kiện chọn Lọc Thời Gian (Hôm nay / Tháng này / Tất cả)
+        chipGroupTime.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipToday) {
+                selectedTimeFilter = "TODAY";
+            } else if (checkedId == R.id.chipThisMonth) {
+                selectedTimeFilter = "THIS_MONTH";
+            } else if (checkedId == R.id.chipAllTime) {
+                selectedTimeFilter = "ALL";
+            }
+            loadFilteredData();
+        });
+
+        // 2. Sự kiện chọn Lọc Loại (Tất cả / Thu / Chi)
+        chipGroupType.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipAllType) {
+                selectedTypeFilter = "ALL";
+            } else if (checkedId == R.id.chipIncome) {
+                selectedTypeFilter = "THU";
+            } else if (checkedId == R.id.chipExpense) {
+                selectedTypeFilter = "CHI";
+            }
+            loadFilteredData();
+        });
+
+        updateDashboardHeader();
+        loadFilteredData();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        updateDashboard(); // Cập nhật lại khi quay lại màn hình chính
+        updateDashboardHeader();
+        loadFilteredData();
     }
 
-    private void insertSampleDataIfEmpty() {
-        Cursor cursor = dbHelper.getAllGiaoDich();
-        if (cursor == null || cursor.getCount() == 0) {
-            // Thêm 1 khoản thu và 1 khoản chi làm dữ liệu mẫu
-            dbHelper.addGiaoDich(25000000, "THU", "15/10/2026", "Lương tháng 10", 6);
-            dbHelper.addGiaoDich(12500000, "CHI", "15/10/2026", "Mua sắm & Ăn uống", 1);
-        }
-        if (cursor != null) cursor.close();
-    }
-
-    private void updateDashboard() {
-        // 1. Tính toán tổng thu, chi, số dư từ CSDL SQLite
+    // Cập nhật số tổng quan ở thẻ trên cùng
+    private void updateDashboardHeader() {
         int tongThu = dbHelper.getTongTien("THU");
         int tongChi = dbHelper.getTongTien("CHI");
         int soDu = tongThu - tongChi;
@@ -80,10 +99,13 @@ public class MainActivity extends AppCompatActivity {
         tvTongThu.setText(currencyVN.format(tongThu));
         tvTongChi.setText(currencyVN.format(tongChi));
         tvSoDu.setText(currencyVN.format(soDu));
+    }
 
-        // 2. Load danh sách giao dịch từ SQLite lên RecyclerView
+    // Tải lại danh sách theo bộ lọc
+    private void loadFilteredData() {
         giaoDichList.clear();
-        Cursor cursor = dbHelper.getAllGiaoDich();
+        Cursor cursor = dbHelper.getGiaoDichFiltered(selectedTimeFilter, selectedTypeFilter);
+
         if (cursor != null && cursor.moveToFirst()) {
             do {
                 int soTien = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_GD_SOTIEN));
